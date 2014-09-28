@@ -4,6 +4,7 @@
 import os, re, time
 import dendropy
 from io_util import *
+from tree_LBI import *
 
 OUTGROUP = 'A/Beijing/32/1992'
 
@@ -42,6 +43,8 @@ def to_json(node):
 		json['date'] = node.date
 	if hasattr(node, 'seq'):
 		json['seq'] = node.seq
+	if hasattr(node, 'LBI'):
+		json['LBI'] = round(node.LBI,5)
 	if node.child_nodes():
 		json["children"] = []
 		for ch in node.child_nodes():
@@ -142,14 +145,25 @@ def add_virus_attributes(viruses, tree):
 			node.date = strain_to_date[strain]
 		if strain_to_seq.has_key(strain):
 			node.seq = strain_to_seq[strain]
-																		
+
+
+def add_LBI(tree):
+	print "calculate local branching index"
+	T2 = get_average_T2(tree, 1)
+	tau =  T2*2**-4
+	print "avg pairwise distance:", T2
+	print "memory time scale:", tau
+	calc_LBI(tree, tau = tau)
+	
+													
 def main():
 
 	print "--- Tree clean at " + time.strftime("%H:%M:%S") + " ---"
 		
 	viruses = read_json('data/virus_clean.json')
-	tree = crossref_import('data/tree_branches.newick', 'data/tree_states.newick', 'data/states.txt')
-	print "Remove outlier branches"	
+	tree = crossref_import('data/tree_branches.newick', 'data/tree_states.newick', 
+						   'data/states.txt')
+	print "Remove outlier branches" 
 	reduce(tree)
 	print "Remove outgroup"
 	remove_outgroup(tree)
@@ -159,8 +173,8 @@ def main():
 	ladderize(tree)
 	add_node_attributes(tree)
 	add_virus_attributes(viruses, tree)
-
+	add_LBI(tree)
 	write_json(to_json(tree.seed_node), "data/tree_clean.json")
-	
+
 if __name__ == "__main__":
-    main()
+	main()

@@ -149,7 +149,7 @@ def add_virus_attributes(viruses, tree):
 
 def add_LBI(tree):
 	print "calculate local branching index"
-	T2 = get_average_T2(tree, 1)
+	T2 = get_average_T2(tree, 365)
 	tau =  T2*2**-4
 	print "avg pairwise distance:", T2
 	print "memory time scale:", tau

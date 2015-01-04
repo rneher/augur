@@ -1,12 +1,15 @@
 # clean, reroot, ladderize newick tree
 # output to tree.json
 
-import os, re, time
+import os, re, time, datetime
 import dendropy
 from io_util import *
 from tree_LBI import *
 
 OUTGROUP = 'A/Beijing/32/1992'
+# cluster position in numbering starting at 0
+cluster_positions = sorted([188,192,155,158,157, 154, 144])
+
 
 def delimit_newick(infile_name):
 	with open(infile_name, 'r') as file:
@@ -29,8 +32,25 @@ def crossref_import(branches_tree_file, states_tree_file, states_file):
 			bn.seq = label_to_seq[sn.label]
 	return branches_tree
 
+def date_to_str(date):
+	if isinstance(date, datetime.date):
+		return date.isoformat()
+	elif isinstance(date,basestring):
+		return date
+	elif isinstance(date, int) or isinstance(date, float):
+		return datetime.date.fromordinal(int(date)).isoformat()
+	else:
+		print "unknown date format", date
+		return ""
+
 def to_json(node):
 	json = {}
+	for attr, val in node.__dict__.iteritems():
+		if type(val) in [float, int, np.float64]:
+			json[attr] = round(val,5)
+		elif isinstance(val, basestring):
+			json[attr] = val.replace("'",'')
+
 	if hasattr(node, 'clade'):
 		json['clade'] = node.clade
 	if node.taxon:
@@ -38,18 +58,34 @@ def to_json(node):
 	if hasattr(node, 'yvalue'):
 		json['yvalue'] = round(node.yvalue, 5)
 	if hasattr(node, 'xvalue'):
-		json['xvalue'] = round(node.xvalue, 5)	
+		json['xvalue'] = round(node.xvalue, 5)
 	if hasattr(node, 'date'):
-		json['date'] = node.date
+		json['date'] = date_to_str(node.date)
 	if hasattr(node, 'seq'):
 		json['seq'] = node.seq
-	if hasattr(node, 'LBI'):
-		json['LBI'] = round(node.LBI,5)
+	if hasattr(node, 'koel'):
+		json['koel'] = node.koel
 	if node.child_nodes():
 		json["children"] = []
-		for ch in node.child_nodes():
-			json["children"].append(to_json(ch))
+	for ch in node.child_nodes():
+		json["children"].append(to_json(ch))
 	return json
+
+#def to_json(node):
+#	import numpy as np
+#	json = {}
+#	for attr, val in node.__dict__.iteritems():
+#		if type(val) in [float, int, np.float64]:
+#			json[attr] = round(val,5)
+#		elif isinstance(val, basestring):
+#			json[attr] = val.replace("'",'')
+#	if node.taxon:
+#		json['strain'] = str(node.taxon).replace("'", '')
+#	if node.child_nodes():
+#		json["children"] = []
+#		for ch in node.child_nodes():
+#			json["children"].append(to_json(ch))
+#	return json
 	
 def get_yvalue(node):
 	"""Return y location based on recursive mean of daughter locations"""	
@@ -72,7 +108,8 @@ def remove_outgroup(tree):
 	if outgroup_node:
 #		tree.to_outgroup_position(outgroup_node, update_splits=False)
 		tree.prune_subtree(outgroup_node)
-				
+	else:
+		print "outgroup not found"
 def collapse(tree):
 	"""Collapse short edges to polytomies"""
 	for edge in tree.postorder_edge_iter():
@@ -154,8 +191,20 @@ def add_LBI(tree):
 	print "avg pairwise distance:", T2
 	print "memory time scale:", tau
 	calc_LBI(tree, tau = tau)
-	
-													
+
+def add_Koel_gt(tree):
+	for node in tree.postorder_node_iter():
+		node.koel = Koel_gt(node.seq);
+
+def Koel_gt(seq):
+	import Bio
+	aaseq = str(Bio.Seq.Seq(seq).translate())[:-1]
+	if '*' not in aaseq:
+		return "".join([aaseq[i] for i in cluster_positions])
+	else:
+		print "translation has stop"
+		return ''
+
 def main():
 
 	print "--- Tree clean at " + time.strftime("%H:%M:%S") + " ---"
@@ -172,8 +221,10 @@ def main():
 	ladderize(tree)
 	add_node_attributes(tree)
 	add_virus_attributes(viruses, tree)
-	add_LBI(tree)
-	write_json(to_json(tree.seed_node), "data/tree_clean.json")
+	add_Koel_gt(tree)
+	#add_LBI(tree)
+	write_json(to_json(tree.seed_node.child_nodes()[0]), "data/tree_clean.json")
+	return tree
 
 if __name__ == "__main__":
-	main()
+	tree = main()

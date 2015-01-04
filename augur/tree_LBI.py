@@ -83,10 +83,7 @@ def from_sub_json(json, node):
     '''
     for attr,val in json.iteritems():
         if attr=='children':
-            for sub_json in val:
-                child_node = dendropy.Node()
-                from_sub_json(sub_json, child_node)
-                node.add_child(child_node, edge_length = child_node.xvalue - node.xvalue)
+            pass
         elif attr=='date':
             node.date = date_to_day(val)
         else:
@@ -94,8 +91,21 @@ def from_sub_json(json, node):
                 node.__setattr__(attr, float(val))
             except:
                 node.__setattr__(attr, val)
+
+    for attr,val in json.iteritems():
+        if attr=='children':
+            for sub_json in val:
+                child_node = dendropy.Node()
+                from_sub_json(sub_json, child_node)
+                try:
+                    node.add_child(child_node, edge_length = child_node.xvalue - node.xvalue)
+                except:
+                    print sub_json
+                    print child_node.xvalue
+                    print node.xvalue
+
     if len(node.child_nodes())==0:
-        node.taxon= True
+        node.taxon = dendropy.Taxon(label = node.strain)
     else:
         node.taxon = False
 
@@ -242,7 +252,7 @@ def to_Biopython(tree):
 
 def test():
     from io_util import read_json 
-    tree = from_json(read_json('data/20141228_tree_auspice.json'))
+    tree = from_json(read_json('data/20150102_tree_auspice.json'))
     print "calculate local branching index"
     T2 = get_average_T2(tree, 365)
     tau =  T2*2**-4
@@ -253,9 +263,34 @@ def test():
     color_BioTree_by_attribute(bioTree, 'date')
     return bioTree
 
+def decorate_json():
+    from io_util import read_json,write_json
+    from tree_clean import to_json
+    tree = from_json(read_json('data/20150102_tree_auspice.json'))
+    print "calculate local branching index"
+    T2 = get_average_T2(tree, 365)
+    tau =  T2*2**-4
+    print "avg pairwise distance:", T2
+    print "memory time scale:", tau
+    calc_delta_LBI(tree, tau, datetime.datetime(2014,1,1))
+    # normalize
+    lbi_max = np.max([node.LBI for node in tree.postorder_node_iter() if node.alive])
+    dlbi_max = np.max([node.delta_LBI for node in tree.postorder_node_iter() if node.alive])
+    for node in tree.postorder_node_iter():
+        if node.alive:
+            node.LBI/=lbi_max
+            node.delta_LBI/=dlbi_max
+        else:
+            node.LBI=-1
+            node.delta_LBI=-1            
+
+    write_json(to_json(tree.seed_node), 'data/tree_LBI.json')
+    return tree
+
 
 if __name__=='__main__':
     tree = test()
+    dtree = decorate_json()
     from Bio import Phylo
     Phylo.draw(tree)
 

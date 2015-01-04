@@ -118,9 +118,10 @@ def parse_gisaid():
 		for record in SeqIO.parse(handle, "fasta"):
 			words = record.description.replace(">","").replace(" ","").split('|')
 			strain = words[0]
-			accession = words[1]
+			accession = words[-1]
 			passage = words[3]
-			date = words[5]
+			date = words[1]
+			print date
 			seq = str(record.seq).upper()
 			v = {
 				"strain": strain,	

@@ -6,7 +6,7 @@ from selenium import webdriver
 from Bio import SeqIO
 from io_util import *
 
-GISAID_FASTA = 'gisaid_epiflu_sequence.fasta'
+GISAID_FASTA = 'data/gisaid_epiflu_sequence.fasta'
 
 def download_gisaid(start_year, end_year):
 

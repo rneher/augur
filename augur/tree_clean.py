@@ -8,7 +8,7 @@ from tree_LBI import *
 
 OUTGROUP = 'A/Beijing/32/1992'
 # cluster position in numbering starting at 0
-cluster_positions = sorted([188,192,155,158,157, 154, 144])
+cluster_positions = np.array(sorted([188,192,155,158,157, 154, 144]), dtype=int)+16
 
 
 def delimit_newick(infile_name):

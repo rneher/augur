@@ -9,7 +9,7 @@ from io_util import *
 							
 OUTGROUP = 'A/Beijing/32/1992'							
 RAXML_LIMIT = 1.0 # in hours			
-raxml_bin = '/ebio/ag-neher/home/rneher/software/standard_RAxML/raxmlHPC_SSE3'
+raxml_bin = '/ebio/ag-neher/home/rneher/software/standard-RAxML/raxmlHPC-SSE3'
 							
 def cleanup():
 	for file in glob.glob("RAxML_*"):
@@ -41,7 +41,7 @@ def main():
 	tree.write_to_path("initial_tree.newick", "newick")
 
 	print "RAxML tree optimization with time limit " + str(RAXML_LIMIT) + " hours"
-	os.system("seqmagick convert temp.fasta temp.phyx")
+	os.system("/usr/local/EPD/bin/seqmagick convert temp.fasta temp.phyx")
 	# using exec to be able to kill process
 	end_time = time.time() + int(RAXML_LIMIT*3600)		
 	process = subprocess.Popen("exec ",raxml_bin," -f d -T 6 -j -s temp.phyx -n topology -c 25 -m GTRCAT -p 344312987 -t initial_tree.newick", shell=True)
@@ -68,7 +68,6 @@ def main():
 	os.system(raxml_bin+" -f A -T 6 -s temp.phyx -n states -c 25 -m GTRGAMMA -p 344312987 -t data/tree_branches.newick")
 	os.rename('RAxML_nodeLabelledRootedTree.states', 'data/tree_states.newick')
 	os.rename('RAxML_marginalAncestralStates.states', 'data/states.txt')
-
 	cleanup()	
 
 if __name__ == "__main__":

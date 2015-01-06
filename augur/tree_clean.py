@@ -194,27 +194,40 @@ def add_LBI(tree):
 
 def add_Koel_gt(tree):
 	for node in tree.postorder_node_iter():
-		node.koel = Koel_gt(node.seq);
+		node.koel = Koel_gt(node.seq)
+
+def add_HA1_muts(tree):
+	import Bio
+	for node in tree.postorder_internal_node_iter():
+		HA1_aaseq = np.fromstring(str(Bio.Seq.Seq(node.seq).translate())[16:329+16], 
+								  dtype='|S1')
+		for child in node.child_nodes():
+			HA1_child_aaseq = np.fromstring(str(Bio.Seq.Seq(child.seq).translate()
+												)[16:329+16], dtype='|S1')		  
+			muts_pos = np.where(HA1_aaseq!=HA1_child_aaseq)[0]
+			child.HA1_muts = ",".join([HA1_aaseq[pos]+str(pos+1)+HA1_child_aaseq[pos]
+									   for pos in muts_pos])
+
 
 def coordinates_to_region(lat, lng):
-    '''
-    returns the region based on the geographic sectors defined by longitude and latitude
-    argument:
-    lat  -- latitude
-    lng  -- longitude
-    '''
-    if lat>0:
-        if lng<-20:
-            return 'north_america'
-        elif lng>50:
-            return 'asia'
-        else:
-            return 'europe'
-    else:
-        if lng<-20:
-            return 'south_america'
-        else:
-            return 'oceania'
+	'''
+	returns the region based on the geographic sectors defined by longitude and latitude
+	argument:
+	lat	 -- latitude
+	lng	 -- longitude
+	'''
+	if lat>0:
+		if lng<-20:
+			return 'north_america'
+		elif lng>50:
+			return 'asia'
+		else:
+			return 'europe'
+	else:
+		if lng<-20:
+			return 'south_america'
+		else:
+			return 'oceania'
 
 def add_place(places_to_coordinates, place):
     from geopy import geocoders
@@ -222,7 +235,6 @@ def add_place(places_to_coordinates, place):
     g.timeout=10
     loc = g.geocode(place.replace('_', ' '))
     time.sleep(0.2)
-    print place, loc
     try:
         if loc:
             country = loc[0].split(',')[-1].strip()
@@ -230,23 +242,27 @@ def add_place(places_to_coordinates, place):
             location = loc[1]
             places_to_coordinates[place]={}
             places_to_coordinates[place]['country']=country
-            places_to_coordinates[place]['lat']=loc[0]
-            places_to_coordinates[place]['lng']=loc[1]
-            print place, loc
+            places_to_coordinates[place]['lat']=location[0]
+            places_to_coordinates[place]['lng']=location[1]
+            print place, country
         else:
             print "place not resolved"
     except:
         print "ERROR",place
 
 def add_geo_info(tree):
-    import pickle
-    with open("data/flubase_places.pickle","r") as pfile:
-        places_to_coordinates = pickle.load(pfile)
+    import pickle, os
+    place_fname = "data/flubase_places.pickle"
+    if os.path.isfile(place_fname):
+        with open(place_fname,"r") as pfile:
+            places_to_coordinates = pickle.load(pfile)
+    else:
+        places_to_coordinates = {}
     for node in tree.leaf_iter():
         try:
             place = node.strain.split('/')[1]
         except:
-            place = node.taxon.label.split('/')[0]
+            place = node.taxon.label.split('/')[1]
         if place not in places_to_coordinates:
             add_place(places_to_coordinates, place)
         if place in places_to_coordinates:
@@ -254,6 +270,7 @@ def add_geo_info(tree):
             node.lat =places_to_coordinates[place]['lat']
             node.lng =places_to_coordinates[place]['lng']
             node.region = coordinates_to_region(node.lat, node.lng)
+            print node.region
         else:
             print "no geo info for",place
             node.country = "undefined"
@@ -261,7 +278,7 @@ def add_geo_info(tree):
             node.lng = "undefined"
             node.region = "undefined"
 
-    with open("data/flubase_places.pickle","w") as pfile:
+    with open(place_fname,"w") as pfile:
         pickle.dump(places_to_coordinates,pfile)
 
 def Koel_gt(seq):
@@ -294,6 +311,7 @@ def main():
 	add_Koel_gt(tree)
 	print "add geo info"
 	add_geo_info(tree)
+	add_HA1_muts(tree)
 	#add_LBI(tree)
 	write_json(to_json(tree.seed_node.child_nodes()[0]), "data/tree_clean.json")
 	return tree

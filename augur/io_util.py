@@ -19,7 +19,7 @@ def write_json(data, file_name):
 	except IOError:
 		pass
 	else:
-		json.dump(data, handle, indent=2)
+		json.dump(data, handle, indent=None)
 		handle.close()
 
 def read_fasta(file_name):

@@ -196,6 +196,74 @@ def add_Koel_gt(tree):
 	for node in tree.postorder_node_iter():
 		node.koel = Koel_gt(node.seq);
 
+def coordinates_to_region(lat, lng):
+    '''
+    returns the region based on the geographic sectors defined by longitude and latitude
+    argument:
+    lat  -- latitude
+    lng  -- longitude
+    '''
+    if lat>0:
+        if lng<-20:
+            return 'north_america'
+        elif lng>50:
+            return 'asia'
+        else:
+            return 'europe'
+    else:
+        if lng<-20:
+            return 'south_america'
+        else:
+            return 'oceania'
+
+def add_place(places_to_coordinates, place):
+    from geopy import geocoders
+    g = geocoders.GoogleV3()
+    g.timeout=10
+    loc = g.geocode(place.replace('_', ' '))
+    time.sleep(0.2)
+    print place, loc
+    try:
+        if loc:
+            country = loc[0].split(',')[-1].strip()
+            country = country.encode('ascii', 'replace')
+            location = loc[1]
+            places_to_coordinates[place]={}
+            places_to_coordinates[place]['country']=country
+            places_to_coordinates[place]['lat']=loc[0]
+            places_to_coordinates[place]['lng']=loc[1]
+            print place, loc
+        else:
+            print "place not resolved"
+    except:
+        print "ERROR",place
+
+def add_geo_info(tree):
+    import pickle
+    with open("data/flubase_places.pickle","r") as pfile:
+        places_to_coordinates = pickle.load(pfile)
+    for node in tree.leaf_iter():
+        try:
+            place = node.strain.split('/')[1]
+        except:
+            place = node.taxon.label.split('/')[0]
+        if place not in places_to_coordinates:
+            add_place(places_to_coordinates, place)
+        if place in places_to_coordinates:
+            node.country = places_to_coordinates[place]['country'].upper()
+            node.lat =places_to_coordinates[place]['lat']
+            node.lng =places_to_coordinates[place]['lng']
+            node.region = coordinates_to_region(node.lat, node.lng)
+        else:
+            print "no geo info for",place
+            node.country = "undefined"
+            node.lat = "undefined"
+            node.lng = "undefined"
+            node.region = "undefined"
+
+    with open("data/flubase_places.pickle","w") as pfile:
+        pickle.dump(places_to_coordinates,pfile)
+
 def Koel_gt(seq):
 	import Bio
 	aaseq = str(Bio.Seq.Seq(seq).translate())[:-1]
@@ -219,9 +287,13 @@ def main():
 	collapse(tree)	
 	print "Ladderize tree"	
 	ladderize(tree)
+	print "added attributes"
 	add_node_attributes(tree)
 	add_virus_attributes(viruses, tree)
+	print "add Koel genotypes"
 	add_Koel_gt(tree)
+	print "add geo info"
+	add_geo_info(tree)
 	#add_LBI(tree)
 	write_json(to_json(tree.seed_node.child_nodes()[0]), "data/tree_clean.json")
 	return tree

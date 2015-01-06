@@ -10,13 +10,14 @@ from io_util import *
 OUTGROUP = 'A/Beijing/32/1992'							
 RAXML_LIMIT = 1.0 # in hours			
 raxml_bin = '/ebio/ag-neher/home/rneher/software/standard-RAxML/raxmlHPC-SSE3'
+seqmagick_bin = '/usr/local/EPD/bin/seqmagick'
 							
 def cleanup():
 	for file in glob.glob("RAxML_*"):
 		try:
 			os.remove(file)
 		except OSError:
-			pass    	
+			pass		
 		
 def delimit_newick(infile_name, outfile_name):
 	with open(infile_name, 'r') as file:
@@ -41,16 +42,17 @@ def main():
 	tree.write_to_path("initial_tree.newick", "newick")
 
 	print "RAxML tree optimization with time limit " + str(RAXML_LIMIT) + " hours"
-	os.system("/usr/local/EPD/bin/seqmagick convert temp.fasta temp.phyx")
+	os.system(seqmagick_bin+" convert temp.fasta temp.phyx")
 	# using exec to be able to kill process
 	end_time = time.time() + int(RAXML_LIMIT*3600)		
-	process = subprocess.Popen("exec ",raxml_bin," -f d -T 6 -j -s temp.phyx -n topology -c 25 -m GTRCAT -p 344312987 -t initial_tree.newick", shell=True)
-	while (time.time() < end_time):
-		if os.path.isfile('raxml_result.topology'):
-			break
-		time.sleep(30)
-	process.terminate()
-
+	print "run:", raxml_bin," -f d -T 6 -j -s temp.phyx -n topology -c 25 -m GTRCAT -p 344312987 -t initial_tree.newick"
+	#process = subprocess.Popen("exec ",raxml_bin," -f d -T 6 -j -s temp.phyx -n topology -c 25 -m GTRCAT -p 344312987 -t initial_tree.newick", shell=True)
+	#while (time.time() < end_time):
+	#		if os.path.isfile('raxml_result.topology'):
+	#			break
+	#		time.sleep(30)
+	#	process.terminate()
+	raw_input("press enter when done")
 	checkpoint_files = [file for file in glob.glob("RAxML_checkpoint*")]
 	if os.path.isfile('raxml_result.topology'):
 		checkpoint_files.append('raxml_result.topology')
@@ -71,4 +73,4 @@ def main():
 	cleanup()	
 
 if __name__ == "__main__":
-    main()
+	main()
